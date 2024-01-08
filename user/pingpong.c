@@ -5,34 +5,28 @@
 int
 main(int argc, char *argv[])
 {
-	int p2c[2], c2p[2]; // Parent to child and child to parent pipes
-    char buf[1];
-    pipe(p2c);
-    pipe(c2p);
+	int ptoc[2], ctop[2];
+	pipe(ptoc);
+	pipe(ctop);
+  char buf[64];
 
-    int pid = fork();
-    if (pid < 0) {
-        // Fork failed
-        printf("fork failed\n");
-        exit(1);
-    }
+  if (fork()) {
+    // Parent
+		close(ptoc[0]);
+		close(ctop[1]);
+		write(ptoc[1], "ping", strlen("ping"));
+		wait(0);
+		read(ctop[0], buf, 4);
+		printf("%d: received %s\n", getpid(), buf);
+  } else {
+    // Child
+		close(ptoc[1]);
+		close(ctop[0]);
+		read(ptoc[0], buf, 4);
+		printf("%d: received %s\n", getpid(), buf);
+		write(ctop[1], "pong", strlen("pong"));
+  }
 
-    if (pid == 0) {
-        // Child process
-        read(p2c[0], buf, 1); // Read from parent
-        printf("%d: received ping\n", getpid());
-        write(c2p[1], buf, 1); // Write to parent
-        close(p2c[0]);
-        close(c2p[1]);
-    } else {
-        // Parent process
-        write(p2c[1], "p", 1); // Send to child
-        read(c2p[0], buf, 1); // Read from child
-        printf("%d: received pong\n", getpid());
-        close(p2c[1]);
-        close(c2p[0]);
-        wait(0); // Wait for child to exit
-    }
-		exit(0);
+  exit(0);
 }
 
