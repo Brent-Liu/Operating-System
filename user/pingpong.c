@@ -2,6 +2,9 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 
+#define READEND 0
+#define WRITEEND 1
+
 int
 main(int argc, char *argv[])
 {
@@ -12,21 +15,24 @@ main(int argc, char *argv[])
 
   if (fork()) {
     // Parent
-		close(ptoc[0]);
-		close(ctop[1]);
-		write(ptoc[1], "ping", strlen("ping"));
+		close(ptoc[READEND]);
+		close(ctop[WRITEEND]);
+		write(ptoc[WRITEEND], "ping", strlen("ping"));
 		wait(0);
-		read(ctop[0], buf, 4);
+		read(ctop[READEND], buf, 4);
 		printf("%d: received %s\n", getpid(), buf);
+		close(ptoc[WRITEEND]);
+		close(ctop[READEND]);
   } else {
     // Child
-		close(ptoc[1]);
-		close(ctop[0]);
-		read(ptoc[0], buf, 4);
+		close(ptoc[WRITEEND]);
+		close(ctop[READEND]);
+		read(ptoc[READEND], buf, 4);
 		printf("%d: received %s\n", getpid(), buf);
-		write(ctop[1], "pong", strlen("pong"));
+		write(ctop[WRITEEND], "pong", strlen("pong"));
+		close(ptoc[READEND]);
+		close(ctop[WRITEEND]);
   }
-
   exit(0);
 }
 

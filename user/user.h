@@ -1,3 +1,4 @@
+#include "kernel/types.h" //needed for clangd[used in vscode configuration]
 struct stat;
 
 // system calls
