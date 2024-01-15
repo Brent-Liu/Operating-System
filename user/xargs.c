@@ -1,49 +1,52 @@
 #include "kernel/types.h"
-#include "kernel/param.h"
 #include "user/user.h"
+#include "kernel/param.h"
+#define MAX_LEN 100
 
-#define MAXLEN 100
+int main(int argc, char *argv[]) {
+	char *command = argv[1];
+	char bf;
+	char paramv[MAXARG][MAX_LEN]; // arguments
+	char *m[MAXARG];
 
-int
-main(int argc, char *argv[])
-{
-  char buf2[512];
-  char buf[MAXARG][MAXLEN];
-  char *pass[MAXARG];
+	while (1) {
+		int count = argc-1;  // # of current arguments
+		memset(paramv, 0, MAXARG * MAX_LEN);
+		// copy the parameter of command
+		for (int i=1; i<argc; i++) {
+			strcpy(paramv[i-1], argv[i]);
+		}
 
-  for (int i = 0; i < MAXARG; i++)
-    pass[i] = buf[i];
+		int cursor = 0; // cursor pointing the char position in single_arg
+		int flag = 0; // flag indicating whether thers is argument preceding space
+		int read_result;
 
-  int i;
-  for (i = 1; i < argc; i++)
-    strcpy(buf[i - 1], argv[i]);
-
-  int n;
-  while ((n = read(0, buf2, sizeof(buf2))) > 0) {
-    int pos = argc - 1;
-    char *c = buf[pos];
-    for (char *p = buf2; *p; p++) {
-      if (*p == ' ' || *p == '\n') {
-        *c = '\0';
-        pos++;
-        c = buf[pos];
-      } else
-        *c++ = *p;
-    }
-    *c = '\0';
-    pos++;
-    pass[pos] = 0;
-
-    if (fork()) {
-      wait(0);
-    } else
-      exec(pass[0], pass);
-  }
-
-  if (n < 0) {
-    printf("xargs: read error\n");
-    exit(0);
-  }
-
-  exit(0);
+		while (((read_result = read(0, &bf, 1))) > 0 && bf != '\n') {
+			if (bf == ' ' && flag == 1) {
+				count++;
+				// reset flag and p
+				cursor = 0;
+				flag = 0;
+			}
+			else if (bf != ' ') {
+				paramv[count][cursor++] = bf;
+				flag = 1;
+			}
+		}
+		// encounters EOF of input or \n
+		if (read_result <= 0) {
+			break;
+		}
+		for (int i=0; i<MAXARG-1; i++) {
+			m[i] = paramv[i];
+		}
+		m[MAXARG-1] = 0;
+		if (fork() == 0) {
+			exec(command, m);
+			exit(0);
+		} else {
+			wait((int *) 0);
+		}
+	}
+	exit(0);
 }
